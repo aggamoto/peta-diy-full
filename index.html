@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Peta Kulon Progo - KMZ Leaflet</title>
+  <title>Peta Kulon Progo - GeoJSON</title>
 
-  <!-- Leaflet -->
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Leaflet-KMZ Plugin -->
-  <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
+    }
+    .leaflet-control-layers {
+      font-size: 14px;
     }
   </style>
 </head>
@@ -27,40 +27,55 @@
   // Inisialisasi peta
   var map = L.map('map').setView([-7.82, 110.16], 11);
 
-  // Tambahkan basemap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
+  // Tambahkan basemap OSM
+  var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
   }).addTo(map);
 
-  // Inisialisasi kontrol layer
-  var baseLayers = {};
+  // Layer grup
+  var baseLayers = { "OpenStreetMap": osm };
   var overlays = {};
 
-  // Tambahkan kontrol layer ke peta
-  L.control.layers(baseLayers, overlays).addTo(map);
+  // Fungsi untuk memuat GeoJSON dari URL GitHub
+  function loadGeoJSON(url, name, styleOption) {
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        var layer = L.geoJSON(data, {
+          style: styleOption,
+          onEachFeature: function (feature, layer) {
+            var props = feature.properties;
+            var popup = "<b>" + (props.NAMA || props.name || "Tanpa Nama") + "</b><br>";
+            for (var key in props) {
+              popup += key + ": " + props[key] + "<br>";
+            }
+            layer.bindPopup(popup);
+          }
+        });
 
-  // Fungsi memuat KMZ dari GitHub
-  function loadKMZ(url, name) {
-    var kmz = L.kmzLayer().addTo(map);
-
-    kmz.on('load', function(e) {
-      map.fitBounds(e.layer.getBounds());
-      overlays[name] = e.layer;
-      map.removeLayer(e.layer);
-      L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
-    });
-
-    kmz.load(url);
+        overlays[name] = layer;
+        map.addLayer(layer);
+        L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
+      })
+      .catch(err => console.error("Gagal memuat:", name, err));
   }
 
-  // URL mentah (raw) GitHub
+  // URL dasar GeoJSON dari GitHub
   var baseURL = "https://raw.githubusercontent.com/aggamoto/peta-diy-full/main/";
 
-  // Muat KMZ kamu
-  loadKMZ(baseURL + "DESA_POLYGON_KP.kmz", "Desa Kulon Progo");
-  loadKMZ(baseURL + "JALAN_KP_2017.kmz", "Jalan 2017");
-  loadKMZ(baseURL + "JEMBATAN_KP.kmz", "Jembatan KP");
+  // Muat layer GeoJSON
+  loadGeoJSON(baseURL + "DESA_POLYGON_KP.geojson", "Desa Kulon Progo", {
+    color: "#006400", fillColor: "#00FF00", fillOpacity: 0.3, weight: 1
+  });
+
+  loadGeoJSON(baseURL + "JALAN_KP_2017.geojson", "Jalan 2017", {
+    color: "#FF8C00", weight: 2
+  });
+
+  loadGeoJSON(baseURL + "JEMBATAN_KP.geojson", "Jembatan KP", {
+    color: "#0000FF", radius: 5
+  });
 </script>
 
 </body>
