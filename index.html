@@ -1,79 +1,67 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <title>Peta Infrastruktur DIY - Kulon Progo</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta Kulon Progo - KMZ Leaflet</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Leaflet-KMZ Plugin -->
+  <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
-      padding: 0;
-    }
-    .leaflet-control-layers-expanded {
-      max-height: 250px;
-      overflow-y: auto;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
 
-  <script>
-    // Inisialisasi peta
-    const map = L.map('map').setView([-7.82, 110.15], 11);
+<div id="map"></div>
 
-    // Basemap
-    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+<script>
+  // Inisialisasi peta
+  var map = L.map('map').setView([-7.82, 110.16], 11);
 
-    // Fungsi memuat GeoJSON
-    async function loadLayer(url, style, nameField) {
-      const res = await fetch(url);
-      const data = await res.json();
-      return L.geoJSON(data, {
-        style: style,
-        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-          radius: 6,
-          fillColor: style.color,
-          color: "#fff",
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.8
-        }),
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties[nameField] || 'Tanpa Nama';
-          layer.bindPopup(`<b>${name}</b>`);
-        }
-      });
-    }
+  // Tambahkan basemap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
+  }).addTo(map);
 
-    // Muat semua layer
-    Promise.all([
-      loadLayer('data/DESA_POLYGON_KP.geojson', { color: 'green', weight: 1, fillOpacity: 0.2 }, 'NAMA_DESA'),
-      loadLayer('data/JALAN_KP_2017.geojson', { color: 'orange', weight: 2 }, 'NAMA_JALAN'),
-      loadLayer('data/JEMBATAN_KP.geojson', { color: 'red', weight: 2 }, 'NAMA_JEMBATAN')
-    ]).then(([desa, jalan, jembatan]) => {
-      const overlays = {
-        "🟢 Desa": desa,
-        "🟠 Jalan": jalan,
-        "🔴 Jembatan": jembatan
-      };
+  // Inisialisasi kontrol layer
+  var baseLayers = {};
+  var overlays = {};
 
-      L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+  // Tambahkan kontrol layer ke peta
+  L.control.layers(baseLayers, overlays).addTo(map);
 
-      // Tambahkan layer default
-      desa.addTo(map);
-      jalan.addTo(map);
-      jembatan.addTo(map);
+  // Fungsi memuat KMZ dari GitHub
+  function loadKMZ(url, name) {
+    var kmz = L.kmzLayer().addTo(map);
+
+    kmz.on('load', function(e) {
+      map.fitBounds(e.layer.getBounds());
+      overlays[name] = e.layer;
+      map.removeLayer(e.layer);
+      L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
     });
-  </script>
+
+    kmz.load(url);
+  }
+
+  // URL mentah (raw) GitHub
+  var baseURL = "https://raw.githubusercontent.com/aggamoto/peta-diy-full/main/";
+
+  // Muat KMZ kamu
+  loadKMZ(baseURL + "DESA_POLYGON_KP.kmz", "Desa Kulon Progo");
+  loadKMZ(baseURL + "JALAN_KP_2017.kmz", "Jalan 2017");
+  loadKMZ(baseURL + "JEMBATAN_KP.kmz", "Jembatan KP");
+</script>
+
 </body>
 </html>
